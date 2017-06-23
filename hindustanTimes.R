@@ -6,6 +6,8 @@ library(XML)
 library(jsonlite)
 library(rvest)
 
+# For first time run this
+#rD <- rsDriver(port = 4567L, browser = c("chrome", "firefox", "phantomjs", "internet explorer"), version = "latest", chromever = "latest", geckover = "latest", iedrver = NULL, phantomver = "2.1.1", verbose = TRUE, check = TRUE)
 
 selServ <- wdman::selenium(verbose = FALSE)
 elServ <- wdman::selenium(retcommand = TRUE, verbose = FALSE)
@@ -20,6 +22,8 @@ remDr$open()
 remDr$navigate("http://www.hindustantimes.com/")
 
 remDr$closeServer
+
+webElem <- remDr$findElement(using = 'name', value = "text")
 
 webElem <- remDr$findElement(using = 'name', value = "search")
 webElem$highlightElement()

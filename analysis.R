@@ -32,6 +32,11 @@ timesofIndia <- function(){
   while(i<10){
     search_url=paste(url,as.character(i),sep="/")
     
+    response<- GET(url)
+    if(response$status_code==404 || response$status_code==403){
+      break
+    }
+    
     #Reading the HTML code from the website
     webpage <- read_html(search_url)
     
@@ -143,17 +148,17 @@ deccanChronicle <- function(){
 #############################################################
 #############################################################
 
-timesofIndia <- function(){
-  # url to fetch data
-  url <- 'http://timesofindia.indiatimes.com/topic/Koramangala-Crime'
-  
+indianExpress <- function(){
   # Initialize vectors
   dateData <- c()
   titleData <- c()
   contentData <- c()
   
+  # url to fetch data
+  url <- 'http://indianexpress.com/page'
   
   # Last Date whose data needs to be collected
+  interval_in_months <- 6
   today <- Sys.Date()
   subtract_value <- paste("-",as.character(interval_in_months),sep="")
   last_date <- seq(as.Date(today), length = 2, by = paste(subtract_value,"months"))[2] 
@@ -161,42 +166,43 @@ timesofIndia <- function(){
   i=1
   
   
-  while(i<10){
-    search_url=paste(url,as.character(i),sep="/")
+  while(i<7){
+    search_url=paste(url,as.character(i),"?s=indiranagar",sep="/")
+    
+    tryCatch(read_html(search_url), error=function(e) break)
     
     #Reading the HTML code from the website
     webpage <- read_html(search_url)
     
+    
     # # #Fetch Title
-    Title_html <- html_nodes(webpage,'.content .title')
+    Title_html <- html_nodes(webpage,'h3')
     iterData <- html_text(Title_html)
     titleData <- append(titleData, iterData)
     
-    # Fetch Date
-    date_html <- html_nodes(webpage,'.content .meta')
+    # # Fetch Date
+    date_html <- html_nodes(webpage,'time')
     iterData <- html_text(date_html)
     dateData <- append(dateData, iterData)
-    dates <- as.Date(dateData, "%b %d")
-    dates[dates > as.Date(today)]=dates[dates > as.Date(today)]-years(1)
+    
+    # 
+    # # dateUnit=strsplit(dateData," ")[[1]]
+    # dates <- as.Date(dateData, "%d %b %Y %I:%M %p")
     
     # # #Fetch Content
-    content_html <- html_nodes(webpage,'.content p')
+    content_html <- html_nodes(webpage,'div .details p')
     iterData <- html_text(content_html)
     contentData <- append(contentData, iterData)
     
-    
-    # Check if date condition holds
-    if(as.Date(dates[length(dates)]) < as.Date(last_date))
-      break
+    # # Check if date condition holds
+    # if(as.Date(dates[length(dates)]) < as.Date(last_date))
+    #   break
     
     i=i+1
   }
   
   return(list(titleData = titleData, contentData = contentData, dateData = dates))
 }
-
-
-# data <- timesofIndia()
 
 ##########################################################
 ##########################################################
@@ -345,27 +351,6 @@ subset(data1, keyword == "accid")
 # html_data <- html_nodes(pg, "body")
 # unique(str_match_all(html_text(html_nodes(pg, "body")),"(be[[:alnum:]_]+)")[[1]][,2])
 # (str_match_all(html_text(html_nodes(pg, "body")),"(div)")[[1]][,2])
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
