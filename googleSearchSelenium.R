@@ -11,7 +11,7 @@ library(rvest)
 library(SnowballC)
 
 # For first time run this
-#rD <- rsDriver(port = 4567L, browser = c("chrome", "firefox", "phantomjs", "internet explorer"), version = "latest", chromever = "latest", geckover = "latest", iedrver = NULL, phantomver = "2.1.1", verbose = TRUE, check = TRUE)
+rD <- rsDriver(port = 4567L, browser = c("chrome", "firefox", "phantomjs", "internet explorer"), version = "latest", chromever = "latest", geckover = "latest", iedrver = NULL, phantomver = "2.1.1", verbose = TRUE, check = TRUE)
 selServ <- wdman::selenium(verbose = FALSE)
 #selServ$log()
 elServ <- wdman::selenium(retcommand = TRUE, verbose = FALSE)
