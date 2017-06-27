@@ -6,6 +6,11 @@ library(XML)
 library(urltools)
 library(stringr)
 
+
+# To be done
+# 7. other context data- eg. beat
+# 12. Filter Location wise data
+
 # Server
 selServ <- wdman::selenium(verbose = FALSE)
 elServ <- wdman::selenium(retcommand = TRUE, verbose = FALSE)
@@ -13,13 +18,17 @@ remDr <- remoteDriver(browserName="chrome", port=4567)
 remDr$open()
 
 # Keywords
-url = "http://indianexpress.com/"
-searchKeyword = "Koramangala Crime"
-base_url= domain(url)
-THRESHOLD_DEPTH=3
+url <- "http://indianexpress.com/"
+searchKeyword <- "crime"
+base_url <- domain(url)
+THRESHOLD_DEPTH <- 5
 
 # Keyword Extraction
 keywords <- c("horror", "shot", "crime", "accid", "sexual","fire", "murder", "rape", "rob", "kidnap", "beat", "suicide", "kill", "stab", "rain", "rainfall")
+# Gender Extraction
+genders <- c("male","female")
+# Age group Extraction
+age_group <- c("kid", "woman", "man", "men","women", "child", "boy", "girl")
 
 # Start working
 remDr$navigate(url)
@@ -31,42 +40,25 @@ attrs <- xpathApply(page1_doc, "//input", xmlAttrs)
 length=length(attrs)
 
 
-# Ouput Data
-output_dataf <- data.frame(dateData=as.Date(character()),
-                            contentData=character(), 
-                            keyword=character(), 
-                            stringsAsFactors=FALSE) 
-
-# Go for input box i.e search box
-if(length!=0){
-  for (i in 1:length){
-    if(is.na(attrs[[i]]["type"]) || attrs[[i]]["type"]=="text"){
-      remDr$navigate(url)
-      webElem <- remDr$findElement(using = 'name', value = attrs[[i]]["name"])
-      webElem$sendKeysToElement(list(searchKeyword, "\uE007"))
-      Sys.sleep(2)
-      # Get current url to access its elements
-      result_url= remDr$getCurrentUrl()[[1]]
-      
-      # Crawl it
-      crawler(result_url, 1)
-    }
-  }
-}
 
 
-scrap <- function(html1){
+###################################################################
+####################### Functions #################################
+
+# Function which performs scraping of current page
+scrap <- function(scrap_url){
+  html1 <- getURL(scrap_url, .encoding = "CE_UTF8")
   doc1 <- htmlParse(html1)
   attrs <- xpathApply(doc1, "//div/p", xmlValue)
   attrs <- sapply(attrs, function(x) x[[1]])
-  v1=as.vector(attrs)
+  v1 <- as.vector(attrs)
   
   attrs <- xpathApply(doc1, "//div", xmlValue)
   attrs <- sapply(attrs, function(x) x[[1]])
-  v2=as.vector(attrs)
+  v2 <- as.vector(attrs)
   
-  # v2=append(v1,v2)
-  v2=unique(v2)
+  v2 <-append(v1,v2)
+  v2 <- unique(v2)
   
   if(length(v2)==0){
     return(list())
@@ -83,21 +75,21 @@ scrap <- function(html1){
   
   vec<-c()
   for(i in 1:lenn){
-    vec=append(vec,io[[i]])
+    vec <- append(vec,io[[i]])
   }
   
   vec=unique(vec)
   
-  v2=gsub("\r?\n|\r|\t", " ", v2)
-  v2=trimws(v2, which = c("both", "left", "right"))
-  v2=unique(v2)
+  v2 <- gsub("\r?\n|\r|\t", " ", v2)
+  v2 <- trimws(v2, which = c("both", "left", "right"))
+  v2 <- unique(v2)
   
   # parse_date(v2)
   tm <- as.POSIXlt(Sys.time(), "UTC", "%Y-%m-%dT%H:%M:%S")
-  last_date = parse_date(tm)
+  last_date  <-  parse_date(tm)
   
-  date_array=parse_date(v2)
-  date_array_length=length(date_array)
+  date_array <- parse_date(v2)
+  date_array_length <- length(date_array)
   
   for(i in 1:date_array_length){
     if(is.na(date_array[i]))
@@ -124,69 +116,199 @@ scrap <- function(html1){
   date_with_data2$keyword = NA
   
   # Create final df
-  contentData = gsub("[[:punct:]]", " ", date_with_data2$v2)
-  dateData = date_with_data2$date_array
+  contentData  <-  gsub("[[:punct:]]", " ", date_with_data2$v2)
+  dateData  <-  date_with_data2$date_array
   
   data_with_data4 <- data.frame(dateData, contentData, stringsAsFactors = F)
   data_with_data4$keyword = NA
+  data_with_data4$ageGroup = NA
+  data_with_data4$gender = NA
   
   # Replace every word with its stem word
   for(i in 1:dataFrameLength){
     tmp <- strsplit(data_with_data4[,2]," ")
     
+    # Stemming
     stemmedString <- (wordStem(tmp[[i]], language="porter"))
     intersectedStrings <- intersect(stemmedString, keywords)
-    
     if(length(intersectedStrings)>0){
-      data_with_data4[3][i,]=(intersectedStrings[length(intersectedStrings)])
+      data_with_data4[3][i,] <- (intersectedStrings[length(intersectedStrings)])
     }else{
-      data_with_data4[3][i,]=NA
+      data_with_data4[3][i,] <- NA
     }
+    
+    # Age Group
+    intersectedStrings <- intersect(stemmedString, age_group)
+    if(length(intersectedStrings)>0){
+      data_with_data4[4][i,] <- (intersectedStrings[length(intersectedStrings)])
+    }else{
+      data_with_data4[4][i,] <- NA
+    }
+    
+    # Gender
+    intersectedStrings <- intersect(stemmedString, genders)
+    if(length(intersectedStrings)>0){
+      data_with_data4[5][i,] <- (intersectedStrings[length(intersectedStrings)])
+    }
+    else if(!is.na(data_with_data4[4][i,]) & (data_with_data4[4][i,]=="man" || data_with_data4[4][i,]=="men" || data_with_data4[4][i,]=="boy")){
+      data_with_data4[5][i,] <- "Male"
+    }else if(!is.na(data_with_data4[4][i,]) & (data_with_data4[4][i,]=="woman" || data_with_data4[4][i,]=="women" || data_with_data4[4][i,]=="girl")){
+      data_with_data4[5][i,] <- "Female"
+    }
+    else{
+      data_with_data4[5][i,] <- NA
+    }
+    
+    
     #data1[,2][[i]]=paste(wordStem(tmp[[i]]),collapse=" ")
   }
   
   
   # Remove Useless data
-  date_with_data3 <- na.omit(data_with_data4)
-  #print(date_with_data3)
+  date_with_data3 <- data_with_data4[!is.na(data_with_data4$keyword),]
+  # na.omit(data_with_data4)
+  # print(date_with_data3)
   output_dataf <<- rbind(output_dataf, date_with_data3)
   print("fban\n")
   print(output_dataf)
 }
 
 
+####################################################################
 
+# Function for crawling
 crawler <- function(recur_url, depth){
   if(depth>THRESHOLD_DEPTH)
     return(NA)
   
   scrap(recur_url)
-  
+
   remDr$navigate(recur_url)
-  webElem$sendKeysToElement(list(key = "end"))
-  webElem$sendKeysToElement(list(key = "end"))
-  recur_html <- getURL(recur_url, .encoding = "CE_UTF8")
-  recur_doc <- htmlParse(recur_html)
-  
   # Fetch all links in current Page
   # All links stored in urlLinks
-  urlLinks <- xpathSApply(recur_doc, '//a', xmlGetAttr, "href")
-  
-  #those who don't have base url attached to it attach it
-  
-  urlLinks <- trimws(urlLinks, which = c("both", "left", "right"))
-  urlLinks <- unique(urlLinks)
-  urlLinksDf <- as.data.frame(urlLinks, stringsAsFactors = F)
-  finalurls <- urlLinksDf$urlLinks[domain(urlLinksDf$urlLinks)==base_url]
-  
-  # final links to process
-  finalurls <- finalurls[!is.na(finalurls)]
+  finalurls <- pagination(recur_url)
   
   # Crawl each page
-  final_urlLinks_length <- length(finalurls)
-  
+  final_urlLinks_length <- length(finalurls$attrs)
   for(i in 1:final_urlLinks_length){
-    crawler(finalurls[i] ,depth+1)
+    if(is.na(domain(finalurls$attrs[i]))){
+      finalurls$attrs[i] <- paste("https://",base_url,finalurls$attrs[i],sep="")
+    }
+    
+    if(is.null(visited_links[[finalurls$attrs[i]]])){
+      visited_links[[finalurls$attrs[i]]] <<- T
+      crawler(finalurls$attrs[i] ,depth+1)
+    }
+    
   }
   
 }
+
+##################################################################
+
+# Finds all pagination links
+pagination <- function(pagination_url){
+  main.page <- read_html(x = pagination_url)
+  urls <- main.page %>% 
+    html_nodes("a") %>% 
+    html_attr("href")
+  
+  textss <- main.page %>% 
+    html_nodes("a") %>% 
+    html_text()
+  
+  attrs <- trimws(urls, which = c("both", "left", "right"))
+  attrs1 <- trimws(textss, which = c("both", "left", "right"))
+  
+  paginationdf <- data.frame(attrs,attrs1,stringsAsFactors = F)
+  paginationdf <- paginationdf[grep("^\\d{1,2}$", paginationdf$attrs1),]
+  paginationdf <- unique(paginationdf)
+  
+  # Add base url if not present
+  return(paginationdf)
+}
+
+
+####################################################################
+
+# Find latitude and longitude of a location
+getLatLon <- function(location){
+  BgDr <- remoteDriver(browserName = 'phantomjs', port=4567)
+  BgDr$open()
+  
+  url="http://www.latlong.net/"
+  BgDr$navigate(url)
+  
+  webElem <- BgDr$findElement(using="id", value="gadres")
+  webElem$sendKeysToElement(list(as.character(location)))
+  
+  webElem <- BgDr$findElement(using="class",value = 'button')
+  webElem$clickElement()
+  
+  
+  webElem <- BgDr$findElement(using="name",value = 'lat')
+  webElem$clickElement()
+  webElem$sendKeysToElement(list(key = "control", "a"))
+  webElem$sendKeysToElement(list(key = "control", "c"))
+  latitude=(readClipboard())
+  
+  webElem <- BgDr$findElement(using="name",value = 'lng')
+  webElem$clickElement()
+  webElem$sendKeysToElement(list(key = "control", "a"))
+  webElem$sendKeysToElement(list(key = "control", "c"))
+  longitude=(readClipboard())
+  
+  return (list(lat=latitude, lng=longitude))
+}
+
+#####################################################################
+#####################################################################
+
+
+
+############### Main Program ##################
+
+# Ouput Data
+output_dataf <- data.frame(dateData=as.Date(character()),
+                           contentData=character(), 
+                           keyword=character(), 
+                           ageGroup=character(),
+                           gender=character(),
+                           stringsAsFactors=FALSE) 
+
+
+# A map to keep track of visited links
+visited_links <- list()
+
+
+# Run this if statement. Program begins here
+# Go for input box i.e search box
+if(length!=0){
+  for (i in 1:length){
+    if(is.na(attrs[[i]]["type"]) || attrs[[i]]["type"]=="text"){
+      remDr$navigate(url)
+      webElem <- remDr$findElement(using = 'name', value = attrs[[i]]["name"])
+      webElem$sendKeysToElement(list(searchKeyword, "\uE007"))
+      Sys.sleep(2)
+      
+      # Get current url to access its elements
+      result_url <- remDr$getCurrentUrl()[[1]]
+      
+      # Crawl it
+      crawler(result_url, 1)
+      
+    }
+  }
+}
+
+
+# Process final Data
+final_output_data = unique(output_dataf)
+
+# Append Latitude and longitude in the data
+# Call getLatLon function
+# a=getLatLon("Koramangala")
+
+
+
+

@@ -22,6 +22,10 @@ remDr$open()
 # remDr$open(silent=T)
 remDr$navigate("http://www.google.com/")
 
+
+webElem <- remDr$findElement('xpath', "//a")
+
+
 # remDr$goBack()
 # remDr$getCurrentUrl()
 # remDr$goForward()
@@ -105,6 +109,8 @@ doc <- htmlParse(html)
 attrs <- xpathApply(doc, "//h3//a[@href]", xmlAttrs)
 
 
+pg<-html(url)
+links <- html_attr(html_nodes(pg, xpath="//a"), "href")
 
 
 
@@ -257,7 +263,7 @@ url="http://www.oneindia.com/topic/crime"
 url="http://www.telegraph.co.uk/crime/"
 
 url="http://www.newskarnataka.com/bangalore"
-url="http://indianexpress.com/about/bangalore-crime/"
+url="http://indianexpress.com/about/bangalore/"
 
 html <- getURL(url, .encoding = "CE_UTF8")
 doc <- htmlParse(html)
@@ -348,3 +354,51 @@ for(i in 1:dataFrameLength){
 
 # Remove Useless data
 date_with_data3 <- na.omit(data_with_data4)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###########################################################
+######################### Pagination ######################
+url="https://www.google.com/#q=bangalore"
+
+
+url="http://indianexpress.com/about/bangalore/"
+main.page <- read_html(x = url)
+urls <- main.page %>% 
+  html_nodes("a") %>% 
+  html_attr("href")
+
+textss <- main.page %>% 
+  html_nodes("a") %>% 
+  html_text()
+
+
+html <- getURL(url, .encoding = "CE_UTF8")
+doc <- htmlParse(html)
+
+attrs <- xpathApply(doc, "//a", xmlAttrs)
+attrs <- sapply(attrs, function(x) x[["href"]])
+attrs <- trimws(attrs, which = c("both", "left", "right"))
+
+attrs1 <- xpathApply(doc, "//a", xmlValue)
+attrs1 <- sapply(attrs1, function(x) x[[1]])
+attrs1 <- trimws(attrs1, which = c("both", "left", "right"))
+
+paginationdf <- data.frame(attrs,attrs1,stringsAsFactors = F)
+
+
+paginationdf <- paginationdf[grep("^\\d{1,2}$", paginationdf$attrs1),]
+paginationdf <- unique(paginationdf)
+

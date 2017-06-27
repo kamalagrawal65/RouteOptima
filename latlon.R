@@ -13,22 +13,32 @@ url="http://www.latlong.net/Show-Latitude-Longitude.html"
 
 remDr$navigate(url)
 
-webElem <- remDr$findElement(using="name", value="lat")
-webElem$sendKeysToElement(list(as.character(12.9434)))
+lat=12.9434
+lon=77.6214
 
-webElem <- remDr$findElement(using="name", value="lng")
-webElem$sendKeysToElement(list(as.character(77.6214)))
-
-webElem <- remDr$findElement(using="class",value = 'margin38')
-webElem$clickElement()
-
-
-webElem <- remDr$findElement(using="id",value = 'address')
-#webElem$highlightElement()
-
-webElem$clickElement()
-webElem$sendKeysToElement(list(key = "control", "a"))
-
-webElem$sendKeysToElement(list(key = "control", "c"))
-
-readClipboard()
+for(i in 1:3000){
+  remDr$navigate(url)
+  
+  lat=lat+0.0001
+  lon=lon+0.0001
+  
+  webElem <- remDr$findElement(using="name", value="lat")
+  webElem$sendKeysToElement(list(as.character(lat)))
+  
+  webElem <- remDr$findElement(using="name", value="lng")
+  webElem$sendKeysToElement(list(as.character(lon)))
+  
+  webElem <- remDr$findElement(using="class",value = 'margin38')
+  webElem$clickElement()
+  
+  
+  webElem <- remDr$findElement(using="id",value = 'address')
+  #webElem$highlightElement()
+  
+  webElem$clickElement()
+  webElem$sendKeysToElement(list(key = "control", "a"))
+  
+  webElem$sendKeysToElement(list(key = "control", "c"))
+  print(i)
+  print(readClipboard())
+}
