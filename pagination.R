@@ -10,10 +10,10 @@ library(lubridate)
 library(rvest)
 library(SnowballC)
 library(mongolite)
+library(properties)
 
 # To be done
 # Optimize scrolling websites data fetching
-# read from properties file
 
 
 # Server
@@ -22,13 +22,17 @@ elServ <- wdman::selenium(retcommand = TRUE, verbose = FALSE)
 remDr <- remoteDriver(browserName="chrome", port=4567)
 remDr$open()
 
+properties_file <- read.properties("E:/gpsdesk/scrape/conf.properties")
+separator_in_properties_file=", "
 
 # Keyword Extraction
-keywords <- c("horror", "shot", "crime", "accid", "sexual","fire", "murder", "rape", "rob", "kidnap", "beat", "suicide", "kill", "stab", "rain", "rainfall")
+keywords <- strsplit(properties_file$news_keywords,separator_in_properties_file)[[1]]
+
 # Gender Extraction
-genders <- c("male","female")
+genders <- strsplit(properties_file$genders,separator_in_properties_file)[[1]]
+
 # Age group Extraction
-age_group <- c("kid", "woman", "man", "men","women", "child", "boy", "girl")
+age_group <- strsplit(properties_file$age_group,separator_in_properties_file)[[1]]
 
 
 
@@ -268,15 +272,14 @@ getLatLon <- function(location){
 ############### Main Program ##################
 
 
-# Keywords
-
-urls =c("http://www.hindustantimes.com/" ,"http://www.deccanchronicle.com/search", "http://indianexpress.com/")
-
+# Urls
+urls <- strsplit(properties_file$urls,separator_in_properties_file)[[1]]
 
 # Default Url
 base_url <- character()
 searchKeyword <- "crime"
-THRESHOLD_DEPTH <- 3
+THRESHOLD_DEPTH <- as.numeric(properties_file$depth)
+
 
 # Ouput Data
 output_dataf <- data.frame(dateData=as.Date(character()),
@@ -359,11 +362,15 @@ final_output_data$timeOnly <- sapply(final_output_data$dateData, f)
 
 
 
+# MONGO DB DATABASE INSERTION
+mongo_url=properties_file$mongo_url
+mongo_database=properties_file$mongo_database
+mongo_collection=properties_file$mongo_collection
 
 # Insert data into mongod
-db <- mongo(collection = 'ScrappedData', 
-            db = 'RouteOptimaAnalysis',
-            url = 'mongodb://localhost:27017')
+db <- mongo(mongo_collection, 
+            mongo_database,
+            mongo_url)
 
 db$find()
 db$insert(final_output_data)
