@@ -374,7 +374,7 @@ date_with_data3 <- na.omit(data_with_data4)
 url="https://www.google.com/#q=bangalore"
 
 
-url="http://indianexpress.com/about/bangalore/"
+url="http://timesofindia.indiatimes.com/city/bangalore"
 main.page <- read_html(x = url)
 urls <- main.page %>% 
   html_nodes("a") %>% 
@@ -385,16 +385,8 @@ textss <- main.page %>%
   html_text()
 
 
-html <- getURL(url, .encoding = "CE_UTF8")
-doc <- htmlParse(html)
-
-attrs <- xpathApply(doc, "//a", xmlAttrs)
-attrs <- sapply(attrs, function(x) x[["href"]])
-attrs <- trimws(attrs, which = c("both", "left", "right"))
-
-attrs1 <- xpathApply(doc, "//a", xmlValue)
-attrs1 <- sapply(attrs1, function(x) x[[1]])
-attrs1 <- trimws(attrs1, which = c("both", "left", "right"))
+attrs <- trimws(urls, which = c("both", "left", "right"))
+attrs1 <- trimws(textss, which = c("both", "left", "right"))
 
 paginationdf <- data.frame(attrs,attrs1,stringsAsFactors = F)
 
