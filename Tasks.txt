@@ -1,3 +1,0 @@
-1. Break when no page exists
-2. Find out time
-3. Scrap using selenium in hindustan times

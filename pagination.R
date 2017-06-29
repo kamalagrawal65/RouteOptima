@@ -11,10 +11,10 @@ library(rvest)
 library(SnowballC)
 library(mongolite)
 library(properties)
+library(Rserve)
 
-# To be done
-# Optimize scrolling websites data fetching
-
+# tO BE DONE
+# Remove more length data
 
 # Server
 selServ <- wdman::selenium(verbose = FALSE)
@@ -22,6 +22,7 @@ elServ <- wdman::selenium(retcommand = TRUE, verbose = FALSE)
 remDr <- remoteDriver(browserName="chrome", port=4567)
 remDr$open()
 
+# Properties File Settings
 properties_file <- read.properties("E:/gpsdesk/scrape/conf.properties")
 separator_in_properties_file=", "
 
@@ -35,39 +36,41 @@ genders <- strsplit(properties_file$genders,separator_in_properties_file)[[1]]
 age_group <- strsplit(properties_file$age_group,separator_in_properties_file)[[1]]
 
 
-
 ###################################################################
 ####################### Functions #################################
 
 # Function which performs scraping of current page
-scrap <- function(scrap_url){
-  html1 <- getURL(scrap_url, .encoding = "CE_UTF8")
-  doc1 <- htmlParse(html1)
-  attrs <- xpathApply(doc1, "//div/p", xmlValue)
-  attrs <- sapply(attrs, function(x) x[[1]])
-  v1 <- as.vector(attrs)
+scrap <- function(){
+  # Div elements
+  Sys.sleep(1)
   
-  attrs <- xpathApply(doc1, "//div", xmlValue)
-  attrs <- sapply(attrs, function(x) x[[1]])
-  v2 <- as.vector(attrs)
+  #Scroll to the bottom of the page
+  webElem <- remDr$findElement("css", "body")
+  webElem$sendKeysToElement(list(key = "end"))
+  webElem$sendKeysToElement(list(key = "end"))
   
-  v2 <-append(v1,v2)
-  v2 <- unique(v2)
+  webElem <- remDr$findElements("xpath", "//div")
+  f <- function(s) s$getElementText()[[1]]
+  div_data <- sapply(webElem, f)
   
-  v2 <- as.matrix(v2)
-  v2 <- as.character(v2)
+  # # Div and p elements
+  # webElem <- remDr$findElements("xpath", "//div//p")
+  # f <- function(s) s$getElementText()[[1]]
+  # divp_data <- sapply(webElem, f)
   
-  if(length(v2)==0){
+  # complete_data <- append(div_data,divp_data)
+  complete_data <- div_data
+  if(length(complete_data)==0){
     return(list())
   }
   
-  tttt <- as.data.frame(v2, stringsAsFactors = F)
-  t4 <- parse_date(v2)
-  t4 <- as.data.frame(t4)
+  complete_data_df <- as.data.frame(complete_data, stringsAsFactors = F)
+  date_all <- parse_date(complete_data)
+  date_all <- as.data.frame(date_all)
   
-  v2<-tttt$v2[!is.na(t4$t4)]
+  complete_data<-complete_data_df$complete_data[!is.na(date_all$date_all)]
   
-  io<-strsplit(v2, '\n|\t|\r')
+  io<-strsplit(complete_data, '\n|\t|\r')
   lenn<-length(io)
   
   vec<-c()
@@ -77,15 +80,15 @@ scrap <- function(scrap_url){
   
   vec=unique(vec)
   
-  v2 <- gsub("\r?\n|\r|\t", " ", v2)
-  v2 <- trimws(v2, which = c("both", "left", "right"))
-  v2 <- unique(v2)
+  complete_data <- gsub("\r?\n|\r|\t", " ", complete_data)
+  complete_data <- trimws(complete_data, which = c("both", "left", "right"))
+  complete_data <- unique(complete_data)
   
-  # parse_date(v2)
+  # parse_date(complete_data)
   tm <- as.POSIXlt(Sys.time(), "UTC", "%Y-%m-%dT%H:%M:%S")
   last_date  <-  parse_date(tm)
   
-  date_array <- parse_date(v2)
+  date_array <- parse_date(complete_data)
   date_array_length <- length(date_array)
   
   for(i in 1:date_array_length){
@@ -96,13 +99,10 @@ scrap <- function(scrap_url){
   }
   
   
-  date_with_data=data.frame(date_array,v2, stringsAsFactors = F)
-  date_with_data1=date_with_data[sapply(strsplit(as.character(date_with_data$v2)," "),length)<150,]
-  
-  
-  tfa <- lapply(date_with_data1$v2, function(x) str_extract(x, paste(remove_keywords, collapse = "|")))
-  
-  date_with_data2=date_with_data1[!grepl(paste(remove_keywords, collapse = "|"), date_with_data1$v2),]
+  date_with_data=data.frame(date_array,complete_data, stringsAsFactors = F)
+  date_with_data=date_with_data[sapply(strsplit(as.character(date_with_data$complete_data)," "),length)<150,]
+  tfa <- lapply(date_with_data$complete_data, function(x) str_extract(x, paste(remove_keywords, collapse = "|")))
+  date_with_data2=date_with_data[!grepl(paste(remove_keywords, collapse = "|"), date_with_data$complete_data),]
   
   dataFrameLength <- length(date_with_data2$date_array)
   
@@ -113,7 +113,7 @@ scrap <- function(scrap_url){
   date_with_data2$keyword = NA
   
   # Create final df
-  contentData  <-  gsub("[[:punct:]]", " ", date_with_data2$v2)
+  contentData  <-  gsub("[[:punct:]]", " ", date_with_data2$complete_data)
   dateData  <-  date_with_data2$date_array
   
   data_with_data4 <- data.frame(dateData, contentData, stringsAsFactors = F)
@@ -155,9 +155,6 @@ scrap <- function(scrap_url){
     else{
       data_with_data4[5][i,] <- NA
     }
-    
-    
-    #data1[,2][[i]]=paste(wordStem(tmp[[i]]),collapse=" ")
   }
   
   
@@ -166,6 +163,7 @@ scrap <- function(scrap_url){
   # na.omit(data_with_data4)
   # print(date_with_data3)
   output_dataf <<- rbind(output_dataf, date_with_data3)
+  
   print(output_dataf)
 }
 
@@ -174,12 +172,12 @@ scrap <- function(scrap_url){
 
 # Function for crawling
 crawler <- function(recur_url, depth){
-  if(depth>THRESHOLD_DEPTH)
-    return(NA)
+  # if(depth>THRESHOLD_DEPTH)
+  #   return(NA)
   
-  scrap(recur_url)
-
   remDr$navigate(recur_url)
+  scrap()
+  
   # Fetch all links in current Page
   # All links stored in urlLinks
   finalurls <- pagination(recur_url)
@@ -199,12 +197,14 @@ crawler <- function(recur_url, depth){
       
       if(is.null(visited_links[[finalurls$attrs[i]]])){
         visited_links[[finalurls$attrs[i]]] <<- T
-        crawler(finalurls$attrs[i] ,depth+1)
+        tryCatch(
+          crawler(finalurls$attrs[i] ,depth+1),
+          error=function(e) return()
+        )
       }
+      
     }
-    
   }
-  
 }
 
 ##################################################################
@@ -277,9 +277,10 @@ urls <- strsplit(properties_file$urls,separator_in_properties_file)[[1]]
 
 # Default Url
 base_url <- character()
-searchKeyword <- "crime"
 THRESHOLD_DEPTH <- as.numeric(properties_file$depth)
 
+# location
+location <- "koramangala"
 
 # Ouput Data
 output_dataf <- data.frame(dateData=as.Date(character()),
@@ -293,8 +294,6 @@ output_dataf <- data.frame(dateData=as.Date(character()),
 
 # A map to keep track of visited links
 visited_links <- list()
-
-
 length_of_urls=length(urls)
 
 for(i in 1:length_of_urls){
@@ -316,39 +315,49 @@ for(i in 1:length_of_urls){
   if(length!=0){
     for (j in 1:length){
       if((is.na(attrs[[j]]["type"]) || attrs[[j]]["type"]=="text") && (!is.na(attrs[[j]]["name"]))){
-        remDr$navigate(url)
-        webElem <- remDr$findElement(using = 'name', value = attrs[[j]]["name"])
-        webElem$sendKeysToElement(list(searchKeyword, "\uE007"))
-        Sys.sleep(2)
         
-        # Get current url to access its elements
-        result_url <- remDr$getCurrentUrl()[[1]]
+        keywords_length=length(keywords)
         
-        # Crawl it
-        crawler(result_url, 1)
+        for(i in 1:keywords_length){
+          searchKeyword <- paste(location,keywords[i],sep=" ")
+          remDr$navigate(url)
+          webElem <- remDr$findElement(using = 'name', value = attrs[[j]]["name"])
+          webElem$sendKeysToElement(list(searchKeyword, "\uE007"))
+          Sys.sleep(2)
+          
+          # Get current url to access its elements
+          result_url <- remDr$getCurrentUrl()[[1]]
+          
+          # Crawl it
+          crawler(result_url, 1)
+        }
         
       }
     }
   }
-
-  
 }
 
 
 
 # Process final Data
-final_output_data <- output_dataf
-final_output_data$contentData <- trimws(final_output_data$contentData, which = c("both", "left", "right"))
-final_output_data = unique(final_output_data)
+final_output_data=output_dataf
+final_output_data$contentData <- trimws(output_dataf$contentData, which = c("both", "left", "right"))
+final_output_data <- unique(final_output_data)
 
 
 # Append Latitude and longitude in the data
 # Call getLatLon function
-latlon=getLatLon("Koramangala")
+latlon=getLatLon(location)
 
 final_output_data$latitude <- latlon$lat
 final_output_data$longitude <- latlon$lng
 final_output_data$referenceWebsite <- url
+
+
+# Adjust Date
+today_date <- as.Date(Sys.Date(), "UTC", "%Y-%m-%d") + 1
+final_output_data$dateData[final_output_data$dateData>today_date]=NA
+
 
 
 # Extract date
@@ -358,6 +367,9 @@ final_output_data$dateOnly <- sapply(final_output_data$dateData, f)
 # Extract time
 f <- function(s) strsplit(as.character(s), " " )[[1]][2]
 final_output_data$timeOnly <- sapply(final_output_data$dateData, f)
+
+
+
 
 
 
