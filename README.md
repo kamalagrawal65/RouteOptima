@@ -1,3 +1,9 @@
+### Description ###
+* Light-weight web crawler in python to fetch recent targeted news update of various categories from the news website
+* Stores the data in MongoDB for further analysis
+
+## Usage
+
 * Pagination.R is the final file. run_program() is the entry point.
 
 * Variables are specified in conf.properties. Use this file to change the variables if required. The two variables should be separated by ", ". It can be changed but replace the delimiter in pagination.R file.
